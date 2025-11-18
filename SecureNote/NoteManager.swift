@@ -28,7 +28,7 @@ class NoteManager: ObservableObject {
                 }
             }
         }
-        self.notes = []
+        self.notes []
     }
     
     func saveNotes() {
