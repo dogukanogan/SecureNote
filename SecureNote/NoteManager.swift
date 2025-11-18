@@ -20,20 +20,22 @@ class NoteManager: ObservableObject {
     }
     
     func loadNotes() {
-        
-        if let data = UserDefaults.standard.data(forKey: saveKey) {
-            if let decodedNotes = try? JSONDecoder().decode([Note].self, from: data) {
-                self.notes = decodedNotes
-                return
+        if let encryptedData = UserDefaults.standard.data(forKey: saveKey) {
+            if let decryptedData = CryptoHelper.decrypt(data: encryptedData) {
+                if let decodedNotes = try? JSONDecoder().decode([Note].self, from: decryptedData) {
+                    self.notes = decodedNotes
+                    return
+                }
             }
         }
-        
-        self.notes = []
+        self.notes []
     }
     
     func saveNotes() {
         if let encodedData = try? JSONEncoder().encode(notes) {
-            UserDefaults.standard.set(encodedData, forKey: saveKey)
+            if let encryptedData = CryptoHelper.encrypt(data: encodedData) {
+                UserDefaults.standard.set(encodedData, forKey: saveKey)
+            }
         }
     }
     
