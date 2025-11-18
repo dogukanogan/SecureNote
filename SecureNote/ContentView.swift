@@ -6,39 +6,98 @@
 //
 
 import SwiftUI
+import LocalAuthentication
 
 struct ContentView: View {
     
-    // for now, fake notes
+    @StateObject private var noteManager = NoteManager()
+    @State private var showingAddNoteView = false
     
-    @State private var notes: [Note] = [
-        Note(title: "İlk Not", content: "Bu benim ilk notum."),
-        Note(title: "Market Alışverişi", content: "Süt, yumurta, ekmek")
-    ]
+    // locked or unlocked variable
+    @State private var isUnlocked = false
     
     var body: some View {
-        NavigationView {
-            List(notes) { note in
-                VStack(alignment: .leading) {
-                    Text(note.title)
-                        .font(.headline)
-                    Text(note.content)
-                        .font(.subheadline)
-                        .lineLimit(1) // içeriğin sadece 1 satırı gözükecek
-                }
-            }
-            .navigationTitle("Güvenli Notlar")
-            .toolbar {
-                // new note butonu
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // TODO: yeni not ekleme ekranını aç
-                        print("Yeni not ekle tıklandı.")
-                    }) {
-                        Image(systemName: "plus")
+        VStack {
+            if isUnlocked {
+                // if unlocked, show notes
+                NavigationView {
+                    List {
+                        ForEach(noteManager.notes) { note in
+                            VStack(alignment: .leading) {
+                                Text(note.title)
+                                    .font(.headline)
+                                Text(note.content)
+                                    .font(.subheadline)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .onDelete(perform: noteManager.deleteNote)
                     }
+                    .navigationTitle("Güvenli Notlar")
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button { showingAddNoteView = true } label: {
+                                Image(systemName: "plus")
+                            }
+                        }
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            EditButton()
+                        }
+                    }
+                    .sheet(isPresented: $showingAddNoteView) {
+                        AddNoteView(noteManager: noteManager)
+                    }
+                }
+            } else {
+                VStack(spacing: 20) {
+                    Image(systemName: "lock.shield.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.blue)
+                    
+                    Text("Güvenli Notlar Kilitli")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Button("Kilidi Aç") {
+                        authenticate()
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
                 }
             }
         }
+        .onAppear() {
+            authenticate()
+        }
+    }
+    
+    // Face ID function
+    func authenticate() {
+        let context = LAContext()
+        var error: NSError?
+        
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let reason = "Notlarınıza erişmek için lütfen kimliğinizi doğrulayın."
+            
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
+                DispatchQueue.main.async {
+                    if success {
+                        self.isUnlocked = true
+                    } else {
+                        self.isUnlocked = false
+                    }
+                }
+            }
+        } else {
+            print("Cihazda biyometrik doğrulama yok.")
+            self.isUnlocked = true
+        }
     }
 }
+
+
+
+
